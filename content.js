@@ -5,6 +5,13 @@ let tabSwitches = 0;
 let lastTabActive = document.visibilityState === 'visible';
 let mediaActive = false;
 
+const SOCIAL_DOMAINS = [
+  'linkedin.com', 'twitter.com', 'x.com', 'instagram.com', 'facebook.com', 'tiktok.com', 'reddit.com'
+];
+let socialActive = false;
+let socialActiveSeconds = 0;
+let lastSocialCheck = Date.now();
+
 // Track keystrokes
 window.addEventListener('keydown', () => {
   keystrokes++;
@@ -47,8 +54,20 @@ function checkMediaActivity() {
   });
 }
 
+function checkSocialMedia() {
+  const isSocial = SOCIAL_DOMAINS.some(domain => window.location.hostname.includes(domain));
+  if (isSocial) {
+    socialActive = true;
+    socialActiveSeconds += Math.floor((Date.now() - lastSocialCheck) / 1000);
+  } else {
+    socialActive = false;
+  }
+  lastSocialCheck = Date.now();
+}
+
 setInterval(() => {
   checkMediaActivity();
+  checkSocialMedia();
   // Send metrics to background every 30 seconds
   chrome.runtime.sendMessage({
     type: 'ACTIVITY_METRICS',
@@ -56,13 +75,16 @@ setInterval(() => {
       keystrokes,
       mouseMoves,
       tabSwitches,
-      mediaActive
+      mediaActive,
+      socialActive,
+      socialActiveSeconds
     }
   });
   // Reset counters for the next interval
   keystrokes = 0;
   mouseMoves = 0;
   tabSwitches = 0;
+  socialActiveSeconds = 0;
 }, 30000);
 
 function updateActivity() {

@@ -30,6 +30,8 @@ let activityMetrics = {
   activityHistory: [] // {timestamp, keystrokes, mouseMoves, tabSwitches, mediaActive}
 };
 let lastActiveMinute = null;
+let socialMediaSeconds = 0;
+let socialMediaActive = false;
 
 // Initialize settings
 chrome.runtime.onInstalled.addListener(() => {
@@ -64,6 +66,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       tabSwitches: message.metrics.tabSwitches,
       mediaActive: message.metrics.mediaActive
     });
+    // Social media
+    if (message.metrics.socialActive) {
+      socialMediaSeconds += message.metrics.socialActiveSeconds;
+      socialMediaActive = true;
+    } else {
+      socialMediaActive = false;
+    }
     // Keep only last 2 hours of history
     activityMetrics.activityHistory = activityMetrics.activityHistory.filter(e => Date.now() - e.timestamp < 2 * 60 * 60 * 1000);
     saveMetrics();
@@ -90,16 +99,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (typingFreq > 10 || mouseFreq > 20 || tabSwitchFreq > 10 || mediaActive) {
         nextBreak = Math.max(20, nextBreak - 10); // Suggest sooner break if very active
       }
+      // Calculate work health score
+      let healthScore = 0; // 0-100
+      // Recent activity (last 30 min)
+      const recentActivity = recent.reduce((a, b) => a + b.keystrokes + b.mouseMoves + b.tabSwitches, 0) / 30;
+      // Health score logic
+      // -1 for each minute over 60 min without a break
+      // -1 for each 10 keystrokes/min over 15
+      // -1 for each 20 mouse moves/min over 30
+      // -10 if mediaActive
+      // +10 for each break in last 2 hours
+      // +10 for at least 10 min idle in last hour
+      let lastBreakTime = data.settings && data.settings.lastBreak ? data.settings.lastBreak : 'N/A';
+      let breakCount = data.settings ? data.settings.breakCount : 0;
+      let breakTimes = data.breakTimes || [];
+      if (breakTimes.length > 1) {
+        let diffs = [];
+        for (let i = 1; i < breakTimes.length; i++) {
+          diffs.push((breakTimes[i] - breakTimes[i-1]) / 60000);
+        }
+        avgBreakTime = (diffs.reduce((a, b) => a + b, 0) / diffs.length).toFixed(1) + ' min';
+      }
+      // Time since last break
+      let minsSinceBreak = 0;
+      if (breakTimes.length > 0) minsSinceBreak = Math.floor((Date.now() - breakTimes[breakTimes.length-1]) / 60000);
+      healthScore = 100;
+      if (minsSinceBreak > 60) healthScore -= (minsSinceBreak - 60);
+      if (recentActivity > 15) healthScore -= Math.floor((recentActivity - 15) / 10);
+      if (recentActivity > 30) healthScore -= Math.floor((recentActivity - 30) / 20);
+      if (mediaActive) healthScore -= 10;
+      // Breaks in last 2 hours
+      let recentBreaks = breakTimes.filter(t => Date.now() - t < 2 * 60 * 60 * 1000).length;
+      healthScore += 10 * recentBreaks;
+      // Idle time (no activity) in last hour
+      let idleMinutes = 60 - recent.length;
+      if (idleMinutes > 10) healthScore += 10;
+      if (healthScore > 100) healthScore = 100;
+      if (healthScore < 0) healthScore = 0;
+      // Health zone
+      let healthZone = 'green';
+      if (healthScore < 40) healthZone = 'red';
+      else if (healthScore < 70) healthZone = 'yellow';
+      // Social media warning
+      let socialWarn = socialMediaSeconds > 600; // >10 min in last hour
+      // Next break estimate
+      let nextBreakEstimate = 'N/A';
+      if (breakTimes.length > 0) {
+        let interval = data.settings ? data.settings.breakInterval : 45;
+        let mins = interval - minsSinceBreak;
+        nextBreakEstimate = mins > 0 ? `~${mins} min` : 'Now';
+      }
       sendResponse({
         typingFreq: Math.round(typingFreq),
         mouseFreq: Math.round(mouseFreq),
         tabSwitchFreq: Math.round(tabSwitchFreq),
         mediaActive,
         activeMinutes: activityMetrics.activeMinutes,
-        breakCount: data.settings ? data.settings.breakCount : 0,
-        lastBreak: data.settings && data.settings.lastBreak ? data.settings.lastBreak : 'N/A',
+        breakCount,
+        lastBreak: lastBreakTime,
         avgBreakTime,
-        nextBreak
+        healthScore,
+        healthZone,
+        socialWarn,
+        nextBreakEstimate
       });
     });
     return true;
