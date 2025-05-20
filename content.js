@@ -1,29 +1,71 @@
 let lastActivityTime = Date.now();
-let activityTimeout;
+let keystrokes = 0;
+let mouseMoves = 0;
+let tabSwitches = 0;
+let lastTabActive = document.visibilityState === 'visible';
+let mediaActive = false;
 
-// Monitor mouse movement
-document.addEventListener('mousemove', () => {
+// Track keystrokes
+window.addEventListener('keydown', () => {
+  keystrokes++;
   updateActivity();
 });
 
-// Monitor keyboard activity
-document.addEventListener('keydown', () => {
+// Track mouse movement
+window.addEventListener('mousemove', () => {
+  mouseMoves++;
   updateActivity();
 });
 
-// Monitor scroll activity
-document.addEventListener('scroll', () => {
-  updateActivity();
+// Track tab switches
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (!lastTabActive) {
+      tabSwitches++;
+      lastTabActive = true;
+      chrome.runtime.sendMessage({ type: 'TAB_ACTIVE' });
+    }
+  } else {
+    lastTabActive = false;
+  }
 });
+
+// Detect media activity (audio/video)
+function checkMediaActivity() {
+  const videos = document.querySelectorAll('video');
+  const audios = document.querySelectorAll('audio');
+  mediaActive = false;
+  videos.forEach(video => {
+    if (!video.paused && !video.ended && video.readyState > 2) {
+      mediaActive = true;
+    }
+  });
+  audios.forEach(audio => {
+    if (!audio.paused && !audio.ended && audio.readyState > 2) {
+      mediaActive = true;
+    }
+  });
+}
+
+setInterval(() => {
+  checkMediaActivity();
+  // Send metrics to background every 30 seconds
+  chrome.runtime.sendMessage({
+    type: 'ACTIVITY_METRICS',
+    metrics: {
+      keystrokes,
+      mouseMoves,
+      tabSwitches,
+      mediaActive
+    }
+  });
+  // Reset counters for the next interval
+  keystrokes = 0;
+  mouseMoves = 0;
+  tabSwitches = 0;
+}, 30000);
 
 function updateActivity() {
   lastActivityTime = Date.now();
   chrome.runtime.sendMessage({ type: 'USER_ACTIVE', timestamp: lastActivityTime });
 }
-
-// Notify background script when tab becomes visible
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    chrome.runtime.sendMessage({ type: 'TAB_ACTIVE' });
-  }
-});
