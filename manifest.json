@@ -1,9 +1,15 @@
 {
     "manifest_version": 3,
     "name": "Pause",
-    "description": "A gentle nudge to take a break during work.",
+    "description": "A gentle nudge to take mindful breaks during work.",
     "version": "1.0",
-    "permissions": ["storage", "tabs", "notifications", "idle"],
+    "permissions": [
+      "storage",
+      "tabs",
+      "notifications",
+      "idle",
+      "alarms"
+    ],
     "background": {
       "service_worker": "background.js"
     },
@@ -13,6 +19,10 @@
     },
     "icons": {
       "128": "icons/icon128.png"
-    }
-  }
+    },
+    "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }]
+}
   

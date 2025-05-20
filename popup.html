@@ -4,9 +4,36 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Pause 🧘‍♀️</h1>
-  <p>Your last break was: <span id="last-break">N/A</span></p>
-  <button id="take-break">I took a break</button>
+  <div class="container">
+    <h1>Pause 🧘‍♀️</h1>
+    
+    <div class="stats-section">
+      <h2>Today's Progress</h2>
+      <p>Breaks taken: <span id="break-count">0</span></p>
+      <p>Last break: <span id="last-break">N/A</span></p>
+    </div>
+
+    <div class="settings-section">
+      <h2>Settings</h2>
+      <div class="setting-item">
+        <label for="break-interval">Break Interval (minutes):</label>
+        <input type="number" id="break-interval" min="15" max="120" value="45">
+      </div>
+      
+      <div class="setting-item">
+        <label for="workday-start">Workday Start (hour):</label>
+        <input type="number" id="workday-start" min="0" max="23" value="9">
+      </div>
+      
+      <div class="setting-item">
+        <label for="workday-end">Workday End (hour):</label>
+        <input type="number" id="workday-end" min="0" max="23" value="17">
+      </div>
+    </div>
+
+    <button id="save-settings" class="primary-button">Save Settings</button>
+    <button id="take-break" class="secondary-button">I took a break</button>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>
