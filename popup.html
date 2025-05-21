@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="nudge-popup">
+    <div class="nudge-title">NudgeLater</div>
+    <div id="nudge-options">
+      <button data-mins="60">nudge me in 1 hour</button>
+      <button data-mins="1440">nudge me tomorrow</button>
+      <button data-mins="10080">nudge me next week</button>
+    </div>
+    <div id="nudge-confirm" style="display:none;"></div>
+    <button id="view-dashboard" class="dashboard-btn">view all saved nudges</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

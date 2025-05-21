@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "NudgeLater",
+  "version": "1.0",
+  "description": "Save webpages for future reminders. Get nudges to revisit them, like a calendar for your browser.",
+  "permissions": ["storage", "tabs", "alarms", "notifications"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["dashboard.html", "styles.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+} 
