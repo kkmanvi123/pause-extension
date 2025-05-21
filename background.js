@@ -32,6 +32,11 @@ let activityMetrics = {
 let lastActiveMinute = null;
 let socialMediaSeconds = 0;
 let socialMediaActive = false;
+let timeline = [];
+let totalActiveTime = 0;
+let totalBreakTime = 0;
+let totalIntensity = 0;
+let lastMetricsTimestamp = null;
 
 // Initialize settings
 chrome.runtime.onInstalled.addListener(() => {
@@ -73,8 +78,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else {
       socialMediaActive = false;
     }
-    // Keep only last 2 hours of history
-    activityMetrics.activityHistory = activityMetrics.activityHistory.filter(e => Date.now() - e.timestamp < 2 * 60 * 60 * 1000);
+    // --- New: Aggregate timeline and activity/break/intensity ---
+    if (message.metrics.activityTimestamps && message.metrics.activityTimestamps.length > 0) {
+      totalActiveTime += message.metrics.activityTimestamps.length * 30; // 30s per tick
+      message.metrics.activityTimestamps.forEach(ts => {
+        timeline.push({ ts, intensity: message.metrics.intensity });
+      });
+    }
+    if (message.metrics.breakPeriods && message.metrics.breakPeriods.length > 0) {
+      message.metrics.breakPeriods.forEach(b => {
+        totalBreakTime += Math.floor((b.end - b.start) / 1000);
+        timeline.push({ ts: b.start, intensity: 0, break: true });
+        timeline.push({ ts: b.end, intensity: 0, break: true });
+      });
+    }
+    totalIntensity += message.metrics.intensity;
+    lastMetricsTimestamp = message.metrics.timestamp;
+    // Keep only today's timeline (since 00:00)
+    const today = new Date(); today.setHours(0,0,0,0);
+    timeline = timeline.filter(e => e.ts >= today.getTime());
     saveMetrics();
   } else if (message.type === 'GET_METRICS') {
     // Calculate averages for the last 30 minutes
@@ -149,6 +171,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let mins = interval - minsSinceBreak;
         nextBreakEstimate = mins > 0 ? `~${mins} min` : 'Now';
       }
+      // --- New: Calculate 'how well I'm working' score ---
+      // Score: high if active/break ratio is healthy, intensity is moderate, and breaks are regular
+      let score = 50;
+      let activeMins = Math.floor(totalActiveTime / 60);
+      let breakMins = Math.floor(totalBreakTime / 60);
+      let avgIntensity = timeline.length > 0 ? (totalIntensity / timeline.length) : 0;
+      // Heuristics:
+      // - More than 50 min active without break: -20
+      // - More than 20 min break: -10
+      // - Intensity > 100: -20, < 10: -10
+      // - Regular breaks (every 45-60 min): +20
+      if (activeMins > 50 && breakMins < 10) score -= 20;
+      if (breakMins > 20) score -= 10;
+      if (avgIntensity > 100) score -= 20;
+      if (avgIntensity < 10) score -= 10;
+      // Check for regular breaks
+      let regularBreaks = false;
+      if (timeline.length > 2) {
+        let breakIntervals = [];
+        let lastBreak = null;
+        for (let i = 0; i < timeline.length; i++) {
+          if (timeline[i].break && lastBreak) {
+            breakIntervals.push((timeline[i].ts - lastBreak) / 60000);
+            lastBreak = timeline[i].ts;
+          } else if (timeline[i].break) {
+            lastBreak = timeline[i].ts;
+          }
+        }
+        if (breakIntervals.length > 0) {
+          let avgBreakInterval = breakIntervals.reduce((a, b) => a + b, 0) / breakIntervals.length;
+          if (avgBreakInterval >= 40 && avgBreakInterval <= 70) regularBreaks = true;
+        }
+      }
+      if (regularBreaks) score += 20;
+      if (score > 100) score = 100;
+      if (score < 0) score = 0;
+      let scoreZone = 'green';
+      if (score < 40) scoreZone = 'red';
+      else if (score < 70) scoreZone = 'yellow';
       sendResponse({
         typingFreq: Math.round(typingFreq),
         mouseFreq: Math.round(mouseFreq),
@@ -161,7 +222,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         healthScore,
         healthZone,
         socialWarn,
-        nextBreakEstimate
+        nextBreakEstimate,
+        howWellScore: score,
+        howWellZone: scoreZone,
+        timeline: [...timeline]
       });
     });
     return true;

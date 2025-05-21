@@ -12,16 +12,38 @@ let socialActive = false;
 let socialActiveSeconds = 0;
 let lastSocialCheck = Date.now();
 
+// New metrics
+let activityTimestamps = [];
+let breakPeriods = [];
+let lastBreakStart = null;
+let isActive = true;
+let lastCheck = Date.now();
+
+function recordActivity() {
+  const now = Date.now();
+  activityTimestamps.push(now);
+  if (!isActive) {
+    // End break
+    if (lastBreakStart) {
+      breakPeriods.push({ start: lastBreakStart, end: now });
+      lastBreakStart = null;
+    }
+    isActive = true;
+  }
+}
+
 // Track keystrokes
 window.addEventListener('keydown', () => {
   keystrokes++;
   updateActivity();
+  recordActivity();
 });
 
 // Track mouse movement
 window.addEventListener('mousemove', () => {
   mouseMoves++;
   updateActivity();
+  recordActivity();
 });
 
 // Track tab switches
@@ -31,6 +53,7 @@ window.addEventListener('visibilitychange', () => {
       tabSwitches++;
       lastTabActive = true;
       chrome.runtime.sendMessage({ type: 'TAB_ACTIVE' });
+      recordActivity();
     }
   } else {
     lastTabActive = false;
@@ -65,10 +88,21 @@ function checkSocialMedia() {
   lastSocialCheck = Date.now();
 }
 
+function checkBreakPeriod() {
+  const now = Date.now();
+  // If no activity for 5+ min, start a break
+  if (isActive && now - lastActivityTime > 5 * 60 * 1000) {
+    lastBreakStart = now;
+    isActive = false;
+  }
+}
+
 setInterval(() => {
   checkMediaActivity();
   checkSocialMedia();
-  // Send metrics to background every 30 seconds
+  checkBreakPeriod();
+  // Intensity: weighted sum (keystrokes*2 + mouseMoves*1 + tabSwitches*3)
+  const intensity = keystrokes * 2 + mouseMoves * 1 + tabSwitches * 3;
   chrome.runtime.sendMessage({
     type: 'ACTIVITY_METRICS',
     metrics: {
@@ -77,7 +111,11 @@ setInterval(() => {
       tabSwitches,
       mediaActive,
       socialActive,
-      socialActiveSeconds
+      socialActiveSeconds,
+      activityTimestamps: [...activityTimestamps],
+      breakPeriods: [...breakPeriods],
+      intensity,
+      timestamp: Date.now()
     }
   });
   // Reset counters for the next interval
@@ -85,6 +123,8 @@ setInterval(() => {
   mouseMoves = 0;
   tabSwitches = 0;
   socialActiveSeconds = 0;
+  activityTimestamps = [];
+  breakPeriods = [];
 }, 30000);
 
 function updateActivity() {

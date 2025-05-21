@@ -12,6 +12,13 @@
   </div>
 
   <div class="summary-card card">
+    <div class="howwell-label">How well I'm working</div>
+    <div class="howwell-bar-row">
+      <div class="howwell-bar-outer">
+        <div id="howwell-bar" class="howwell-bar"></div>
+      </div>
+      <span id="howwell-score-label" class="howwell-score-label">--</span>
+    </div>
     <div class="next-break-label">Next break: <span id="next-break-estimate">~-- min</span></div>
     <div class="health-bar-row">
       <div class="health-bar-outer">
@@ -24,6 +31,7 @@
 
   <div class="card progress-card">
     <h2>Today's Progress</h2>
+    <svg id="progress-graph" width="300" height="60" style="margin: 0 0 10px 0;"></svg>
     <div class="progress-metrics">
       <div><b>Breaks taken:</b> <span id="break-count">0</span></div>
       <div><b>Last break:</b> <span id="last-break">N/A</span></div>

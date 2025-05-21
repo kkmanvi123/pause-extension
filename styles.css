@@ -234,3 +234,45 @@ button {
   background: #eaf6ed;
   border-radius: 8px;
 }
+
+.howwell-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2e6e4c;
+  margin-bottom: 6px;
+}
+.howwell-bar-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.howwell-bar-outer {
+  width: 180px;
+  height: 18px;
+  background: #f0ede7;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-right: 8px;
+  box-shadow: 0 1px 4px rgba(34, 67, 44, 0.04);
+}
+.howwell-bar {
+  height: 100%;
+  width: 0%;
+  background: #2e6e4c;
+  border-radius: 10px;
+  transition: width 0.5s, background 0.5s;
+}
+.howwell-score-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  min-width: 32px;
+  text-align: center;
+}
+#progress-graph {
+  display: block;
+  background: #f8f5f0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
