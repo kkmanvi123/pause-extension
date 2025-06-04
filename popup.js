@@ -1,39 +1,59 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const options = document.querySelectorAll('#nudge-options button');
-  const confirm = document.getElementById('nudge-confirm');
-  const dashboardBtn = document.getElementById('view-dashboard');
+// Nudge popup.js
 
-  let currentTab = null;
-  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-    currentTab = tabs[0];
-  });
+let selectedMins = null;
 
-  options.forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (!currentTab) return;
-      const mins = parseInt(btn.getAttribute('data-mins'), 10);
-      const now = Date.now();
-      const nudgeTime = now + mins * 60 * 1000;
-      const nudge = {
-        url: currentTab.url,
-        title: currentTab.title,
-        nudgeTime,
-        createdAt: now,
-        fired: false
-      };
-      chrome.runtime.sendMessage({ type: 'SAVE_NUDGE', nudge }, (res) => {
-        if (res && res.ok) {
-          confirm.textContent = `✅ Nudge set for ${new Date(nudgeTime).toLocaleString()}`;
-          confirm.style.display = '';
-        } else {
-          confirm.textContent = res && res.error ? `⚠️ ${res.error}` : '⚠️ Error saving nudge.';
-          confirm.style.display = '';
-        }
-      });
-    });
-  });
-
-  dashboardBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
+// Handle preset button selection
+const presetBtns = document.querySelectorAll('.preset-btn');
+presetBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    presetBtns.forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedMins = parseInt(btn.getAttribute('data-mins'), 10);
+    document.getElementById('custom-time').value = '';
   });
 });
+
+document.getElementById('custom-time').addEventListener('input', () => {
+  presetBtns.forEach(b => b.classList.remove('selected'));
+  selectedMins = null;
+});
+
+document.getElementById('set-btn').addEventListener('click', () => {
+  const status = document.getElementById('status');
+  status.textContent = '';
+  let remindTime = null;
+  if (selectedMins) {
+    remindTime = Date.now() + selectedMins * 60 * 1000;
+  } else {
+    const customVal = document.getElementById('custom-time').value;
+    if (!customVal) {
+      status.textContent = 'Please select a time.';
+      return;
+    }
+    remindTime = Date.parse(customVal);
+    if (isNaN(remindTime) || remindTime <= Date.now()) {
+      status.textContent = 'Please enter a valid future time.';
+      return;
+    }
+  }
+  // Get current tab info
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    const tab = tabs[0];
+    if (!tab || !tab.url) {
+      status.textContent = 'Could not get current tab.';
+      return;
+    }
+    chrome.runtime.sendMessage({
+      type: 'SET_REMINDER',
+      url: tab.url,
+      title: tab.title || tab.url,
+      time: remindTime
+    }, resp => {
+      if (resp && resp.ok) {
+        status.textContent = 'Reminder set!';
+      } else {
+        status.textContent = 'Failed to set reminder.';
+      }
+    });
+  });
+}); 

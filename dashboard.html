@@ -1,24 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <title>Nudge Dashboard</title>
+  <style>
+    body { font-family: sans-serif; margin: 24px; background: #f8f8f8; }
+    h2 { color: #00796b; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    th, td { border: 1px solid #e0e0e0; padding: 8px 10px; }
+    th { background: #e0f7fa; color: #00796b; }
+    td { font-size: 0.98em; }
+    .delete-btn { background: #e57373; color: #fff; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+    .delete-btn:hover { background: #c62828; }
+  </style>
 </head>
 <body>
-  <div class="nudge-dashboard">
-    <div class="nudge-title">NudgeLater Dashboard</div>
-    <table id="nudge-table">
-      <thead>
-        <tr>
-          <th>title</th>
-          <th>saved</th>
-          <th>nudge time</th>
-          <th>status</th>
-          <th>actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <h2>Nudge Reminders Dashboard</h2>
+  <table id="reminders-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>URL</th>
+        <th>Scheduled Time</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
   <script src="dashboard.js"></script>
 </body>
 </html> 

@@ -1,20 +1,15 @@
+
 {
   "manifest_version": 3,
-  "name": "NudgeLater",
+  "name": "Nudge",
   "version": "1.0",
-  "description": "Save webpages for future reminders. Get nudges to revisit them, like a calendar for your browser.",
-  "permissions": ["storage", "tabs", "alarms", "notifications"],
+  "description": "Set reminders to revisit tabs. Get notified and reopen them later.",
+  "permissions": ["alarms", "notifications", "storage", "tabs", "activeTab"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html"
   },
-  "host_permissions": ["<all_urls>"],
-  "web_accessible_resources": [
-    {
-      "resources": ["dashboard.html", "styles.css"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "host_permissions": ["<all_urls>"]
 } 

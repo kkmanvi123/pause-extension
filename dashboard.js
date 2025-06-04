@@ -1,61 +1,44 @@
+// Nudge dashboard.js
+
+const STORAGE_KEY = 'nudge_reminders';
+
 function formatTime(ts) {
   return new Date(ts).toLocaleString();
 }
 
-function status(nudge) {
-  const now = Date.now();
-  if (nudge.fired) return 'Passed';
-  if (nudge.nudgeTime > now) return 'Upcoming';
-  return 'Due';
-}
-
-function renderTable(nudges) {
-  const tbody = document.querySelector('#nudge-table tbody');
-  tbody.innerHTML = '';
-  nudges
-    .map((n, i) => ({ ...n, idx: i }))
-    .sort((a, b) => a.nudgeTime - b.nudgeTime)
-    .forEach(nudge => {
+function loadReminders() {
+  chrome.storage.local.get([STORAGE_KEY], res => {
+    const reminders = res[STORAGE_KEY] || [];
+    const tbody = document.querySelector('#reminders-table tbody');
+    tbody.innerHTML = '';
+    reminders.forEach((reminder, idx) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><a href="${nudge.url}" target="_blank">${nudge.title}</a></td>
-        <td>${formatTime(nudge.createdAt)}</td>
-        <td>${formatTime(nudge.nudgeTime)}</td>
-        <td>${status(nudge)}</td>
-        <td>
-          <button class="delete-btn" data-idx="${nudge.idx}">delete</button>
-          <button class="resched-btn" data-idx="${nudge.idx}">reschedule</button>
-        </td>
+        <td>${reminder.title}</td>
+        <td><a href="${reminder.url}" target="_blank">${reminder.url}</a></td>
+        <td>${formatTime(reminder.time)}</td>
+        <td><button class="delete-btn" data-idx="${idx}">Delete</button></td>
       `;
       tbody.appendChild(tr);
     });
-}
-
-function loadNudges() {
-  chrome.runtime.sendMessage({ type: 'GET_NUDGES' }, (nudges) => {
-    renderTable(nudges || []);
   });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadNudges();
-
-  document.getElementById('nudge-table').addEventListener('click', (e) => {
+  loadReminders();
+  document.getElementById('reminders-table').addEventListener('click', e => {
     if (e.target.classList.contains('delete-btn')) {
       const idx = parseInt(e.target.getAttribute('data-idx'), 10);
-      chrome.runtime.sendMessage({ type: 'DELETE_NUDGE', idx }, loadNudges);
-    }
-    if (e.target.classList.contains('resched-btn')) {
-      const idx = parseInt(e.target.getAttribute('data-idx'), 10);
-      const newTime = prompt('Enter new nudge time (YYYY-MM-DD HH:MM):');
-      if (newTime) {
-        const ts = Date.parse(newTime.replace(/-/g, '/'));
-        if (!isNaN(ts)) {
-          chrome.runtime.sendMessage({ type: 'RESCHEDULE_NUDGE', idx, newTime: ts }, loadNudges);
-        } else {
-          alert('Invalid date/time format.');
+      chrome.storage.local.get([STORAGE_KEY], res => {
+        const reminders = res[STORAGE_KEY] || [];
+        const reminder = reminders[idx];
+        if (reminder) {
+          reminders.splice(idx, 1);
+          chrome.storage.local.set({ [STORAGE_KEY]: reminders }, () => {
+            chrome.alarms.clear(reminder.alarmName, loadReminders);
+          });
         }
-      }
+      });
     }
   });
 }); 
